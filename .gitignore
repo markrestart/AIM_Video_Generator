@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+
+# Editor and IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# json files inside the chats folder
+chats/*.json
+
+# everything inside the media folder except the info.txt file
+media/**
+!media/info.txt
+
+# output fodler
+output/
+intermediate/
+
+# files I don't have rights to
+assets/bg.png
+

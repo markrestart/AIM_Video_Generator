@@ -1,0 +1,3 @@
+Add conversation json files directly in this folder. All files should be named in the format 'dakota_julia_*.json'.
+For the group chat, it should be stored in the format 'group_chat_*.json'.
+Any extra data may be added after the second underscore, all files will be loaded and chats combined if there are multiple pages.

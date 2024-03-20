@@ -1,0 +1,4 @@
+Some assets cannot be distributed with this code. Add the following for a complete video
+
+bg.png - A 1920x1080 background image to go behind the phone images.
+music.mp3 - Background music for the video. Optimally the same length or longer than the text message durration.(~100 minutes usually)
