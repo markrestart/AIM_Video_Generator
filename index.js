@@ -85,6 +85,9 @@ function loadChatData() {
 
 async function promptUserForCharacterNames(chatData) {
   var characterNames = chatData.characterNames;
+  //Capitalise the first letter of each character name
+  characterNames = characterNames.map((name) => name.charAt(0).toUpperCase() + name.slice(1));
+
   delete chatData.characterNames;
   const rl = readline.createInterface({
     input: process.stdin,
@@ -127,7 +130,8 @@ function generateSingleConversationVideo(chatData, characterName1, characterName
   // Setup scene
   const scene = new FFScene();
   scene.setDuration(duration); //TODO: set duration based on chat duration
-  scene.setBgColor("#000000");
+  const background = new FFImage({ path: path.join(__dirname, "assets/phone.png"), x: 300, y: 500 });
+  scene.addChild(background);
   creator.addChild(scene);
 
   // Add text
@@ -145,51 +149,77 @@ function generateSingleConversationVideo(chatData, characterName1, characterName
 
   // Add text
   let visableMessages = [];
-  const messageLimit = 5;
+  const heightLimit = 600;
+  messageGap = 40;
 
-  const xValue = 100;
+  const xValue = 80;
   const topYValue = 200;
   const underYValue = 1200;
-  const aboveYValue = -200;
-  const ySpreadValue = 200;
+  const aboveYValue = -10000;
 
   chat.forEach((message) => {
     const enterTime = Math.abs((new Date(message.timestamp) - chatData.startTime) / 1000 / 60);
+    const characterName = chatData.users.find((user) => user.username === message.userName).characterName;
 
     //Set up the message
-    const text = new FFText({ text: `${message.username}:${message.content}`, x: xValue, y: underYValue }); //TODO: use character name instead of username
-    text.setSize(20);
-    text.setWrap(400);
-    text.setColor("#ff00ff");
-    text.setStyle({ padding: 10, borderRadius: "10px" });
-    const height = text.getWH()[1];
+    const text = new FFText({ text: `${message.content}`, x: xValue, y: underYValue });
+    const characterText = new FFText({ text: `${characterName}:`, x: xValue, y: underYValue });
+    text.setColor("#ffffff");
+    text.setWrap(450);
+    characterText.setColor("#cccfcd");
+    text.setStyle({ fontSize: 24 });
+    characterText.setStyle({ fontSize: 18 });
+    const height = Math.ceil(message.content.length / 40) * 30 + messageGap;
 
-    //animate mesage in to scene
-    text.addAnimate({
-      from: { x: xValue, y: underYValue },
-      to: { x: xValue, y: topYValue + ySpreadValue * visableMessages.length },
-      time: 1,
-      delay: enterTime,
+    visableMessages.push({
+      text: text,
+      characterText: characterText,
+      height: height,
+      toBeDeleted: false,
+      currentY: underYValue,
+      content: message.content,
     });
+
+    // Sum the heights of all the messages, and remove the oldest message if the total height exceeds the limit,
+    // repeating until the total height is less than the limit, or there is only one message left
+    let totalHeight = visableMessages.reduce((acc, message) => acc + message.height, 0);
+    while (totalHeight > heightLimit && visableMessages.length > 1) {
+      const oldMessage = visableMessages[0];
+      oldMessage.toBeDeleted = true;
+      totalHeight -= oldMessage.height;
+    }
 
     //animate previous messages up
     visableMessages.forEach((message, index) => {
-      message.addAnimate({
-        from: { x: xValue, y: topYValue + ySpreadValue * index },
-        to: { x: xValue, y: index === 0 ? aboveYValue : topYValue + ySpreadValue * (index - 1) },
-        time: 1,
-        delay: enterTime,
+      const newY = message.toBeDeleted
+        ? aboveYValue
+        : topYValue +
+          visableMessages
+            .slice(0, index)
+            .filter((message) => !message.toBeDeleted)
+            .reduce((acc, message) => acc + message.height, 0);
+
+      message.text.addAnimate({
+        from: { x: xValue, y: message.currentY },
+        to: { x: xValue, y: newY },
+        time: 0,
+        delay: enterTime * 3.875,
       });
+      message.characterText.addAnimate({
+        from: { x: xValue, y: message.currentY - 20 },
+        to: { x: xValue, y: newY - 20 },
+        time: 0,
+        delay: enterTime * 3.875,
+      });
+
+      message.currentY = newY;
     });
 
-    //if there are more than 5 messages, remove the oldest message
-    if (visableMessages.length >= messageLimit) {
-      const oldMessage = visableMessages.shift();
-    }
-
-    visableMessages.push(text);
+    //Remove messages that are to be deleted
+    visableMessages = visableMessages.filter((message) => !message.toBeDeleted);
 
     scene.addChild(text);
+    scene.addChild(characterText);
   });
 
   // Create a video
@@ -220,7 +250,7 @@ async function generateVideo(chatData) {
 
   // Add background
   const scene = new FFScene();
-  scene.setDuration(6);
+  scene.setDuration(Math.abs(chatData.endTime - chatData.startTime) / 1000 / 60);
   const background = new FFImage({ path: path.join(__dirname, "assets/bg.png"), x: 960, y: 540 });
   scene.addChild(background);
   creator.addChild(scene);
@@ -246,7 +276,7 @@ async function generateVideo(chatData) {
   // Add videos to the main video
   let i = 0;
   chatKeys.forEach((chat) => {
-    const video = new FFVideo({ path: path.join(__dirname, `intermediate/${chat}.mp4`), x: i * 300 + 100, y: 540, width: 350, height: 800 });
+    const video = new FFVideo({ path: path.join(__dirname, `intermediate/${chat}.mp4`), x: i * 450 + 200, y: 540, width: 600, height: 1000, scale: 0.5 });
     scene.addChild(video);
     i++;
   });
@@ -269,7 +299,7 @@ async function generateVideo(chatData) {
 async function main() {
   var chatData = loadChatData();
 
-  //chatData = await promptUserForCharacterNames(chatData);
+  chatData = await promptUserForCharacterNames(chatData);
   await generateVideo(chatData);
   console.log("Done");
 }
